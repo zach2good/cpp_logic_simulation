@@ -29,9 +29,9 @@
 #include <mutex>					// std::mutex, std::unique_lock.
 #include <algorithm>				// std::equal.
 
-#include <termios.h>				// terminal settings.
-#include <unistd.h>					// POSIX bits.
-#include <sys/ioctl.h>				// ioctl().
+//#include <termios.h>				// terminal settings.
+#include <cstdint>					// POSIX bits.
+//#include <sys/ioctl.h>			// ioctl().
 
 #include "c_core.h"					// Core simulator functionality
 #include "void_thread_pool.hpp"
@@ -83,6 +83,7 @@ void Simulation::EnableTerminalRawIO(const bool raw_flag) {
 	// in 'buffered' mode, where characters are buffered and only made available to STDIN after a newline character.
 	// Synthesised (along with the ioctl() call in CheckForCharacter() to actually check if a character is available
 	// before calling getchar()) from the example at https://www.flipcode.com/archives/_kbhit_for_Linux.shtml.
+	/*
 	int STDIN = 0;
 	if (raw_flag == true) {
 		termios new_term_io_settings;
@@ -94,15 +95,18 @@ void Simulation::EnableTerminalRawIO(const bool raw_flag) {
 	} else {
 		tcsetattr(STDIN, TCSANOW, &m_old_term_io_settings);
 	}
+	*/
 }
 
 char Simulation::CheckForCharacter() {
-	int bytes_waiting, STDIN = 0;
 	char key_pressed = '\0';
+	/*
+	int bytes_waiting, STDIN = 0;
 	ioctl(STDIN, FIONREAD, &bytes_waiting);
 	if (bytes_waiting > 0) {
 		key_pressed = getchar();
 	}
+	*/
 	return key_pressed;
 }
 

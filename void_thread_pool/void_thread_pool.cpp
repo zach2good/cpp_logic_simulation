@@ -35,6 +35,7 @@
 #include <condition_variable>			// std::condition_variable.
 #include <queue>						// std::queue.
 #include <functional>					// std::function.
+#include <string>                       // std::to_string.
 
 #include "void_thread_pool.hpp"
 

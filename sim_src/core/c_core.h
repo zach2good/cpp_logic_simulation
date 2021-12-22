@@ -28,7 +28,7 @@
 #include <string>					// std::string.
 #include <vector>					// std::vector
 #include <unordered_map>			// std::unordered_map
-#include <termios.h>				// terminal settings data structure
+//#include <termios.h>				// terminal settings data structure
 
 // NOTE - c_structs.h must be included first after the library headers as it contains essential forward definitions.
 #include "c_structs.h"				// struct definitions and forward Class delarations for the below.
@@ -279,7 +279,7 @@ class Simulation : public Device {
 		std::vector<magic_engine_descriptor> m_magic_engines;
 		std::vector<std::string> m_error_messages;
 		std::vector<std::string> m_messages;
-		termios m_old_term_io_settings;
+		//termios m_old_term_io_settings;
 		bool m_simulation_running;
 		int m_global_tick_index;
 		int m_next_new_CUID;
