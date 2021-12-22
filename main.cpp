@@ -1,49 +1,223 @@
-#include "c_core.h"			// Core simulator functionality
-#include "devices.h"		// One_Bit_Register Device
+#include "c_core.h"
+#include "devices.h"
 
-int main () {
-    // Verbosity flags. Set verbose & monitor_on equal to true to display verbose simulation output in the console.
+//
+// A --|>o -- !A
+//
+class NAND_NOT : public Device
+{
+public:
+    NAND_NOT(Device* parent_device_pointer, std::string name, bool monitor_on, std::vector<state_descriptor> input_default_states)
+    : Device(parent_device_pointer, name, "nand_not", {"In"}, {"Out"}, monitor_on, input_default_states)
+    {
+        Build();
+        Stabilise();
+    }
+
+    void Build()
+    {
+        AddGate("nand_0", "nand", {"input_0", "input_1"}, false);
+
+        Connect("In", "nand_0", "input_0");
+        Connect("In", "nand_0", "input_1");
+
+        ChildConnect("nand_0", {"parent", "Out"});
+    }
+};
+
+//
+// A --|&&
+//     |&&-- A*B (A AND B)
+// B --|&&
+//
+class NAND_AND : public Device
+{
+public:
+    NAND_AND(Device* parent_device_pointer, std::string name, bool monitor_on, std::vector<state_descriptor> input_default_states)
+    : Device(parent_device_pointer, name, "nand_and", {"In_0", "In_1"}, {"Out"}, monitor_on, input_default_states)
+    {
+        Build();
+        Stabilise();
+    }
+
+    void Build()
+    {
+        AddGate("nand_0", "nand", {"input_0", "input_1"}, false);
+        AddComponent(new NAND_NOT(this, "not_0", false, {{"In", false}}));
+
+        Connect("In_0", "nand_0", "input_0");
+        Connect("In_1", "nand_0", "input_1");
+
+        ChildConnect("nand_0", {"not_0", "In"});
+
+        ChildConnect("not_0", {"Out", "parent", "Out"});
+    }
+};
+
+//
+// A --|OR
+//     |OR-- A+B (A OR B)
+// B --|OR
+//
+class NAND_OR : public Device
+{
+public:
+    NAND_OR(Device* parent_device_pointer, std::string name, bool monitor_on, std::vector<state_descriptor> input_default_states)
+    : Device(parent_device_pointer, name, "nand_or", {"In_0", "In_1"}, {"Out"}, monitor_on, input_default_states)
+    {
+        Build();
+        Stabilise();
+    }
+
+    void Build()
+    {
+        AddComponent(new NAND_NOT(this, "not_0", false, {{"In", false}}));
+        AddComponent(new NAND_NOT(this, "not_1", false, {{"In", false}}));
+        AddGate("nand_0", "nand", {"input_0", "input_1"}, false);
+
+        Connect("In_0", "not_0", "In");
+        Connect("In_1", "not_1", "In");
+
+        ChildConnect("not_0", {"Out", "nand_0", "input_0"});
+        ChildConnect("not_1", {"Out", "nand_0", "input_1"});
+
+        ChildConnect("nand_0", {"parent", "Out"});
+    }
+};
+
+//
+// A --|XR
+//     |XR-- A XOR B
+// B --|XR
+//
+class NAND_XOR : public Device
+{
+public:
+    NAND_XOR(Device* parent_device_pointer, std::string name, bool monitor_on, std::vector<state_descriptor> input_default_states)
+    : Device(parent_device_pointer, name, "nand_or", {"In_0", "In_1"}, {"Out"}, monitor_on, input_default_states)
+    {
+        Build();
+        Stabilise();
+    }
+
+    void Build()
+    {
+        AddGate("nand_0", "nand", {"input_0", "input_1"});
+        AddGate("nand_1", "nand", {"input_0", "input_1"});
+        AddGate("nand_2", "nand", {"input_0", "input_1"});
+        AddGate("nand_3", "nand", {"input_0", "input_1"});
+
+        Connect("In_0", "nand_0", "input_0");
+        Connect("In_0", "nand_1", "input_0");
+
+        Connect("In_1", "nand_0", "input_1");
+        Connect("In_1", "nand_2", "input_1");
+
+        ChildConnect("nand_0", {"nand_1", "input_1"});
+        ChildConnect("nand_0", {"nand_2", "input_0"});
+
+        ChildConnect("nand_1", {"nand_3", "input_0"});
+        ChildConnect("nand_2", {"nand_3", "input_1"});
+
+        ChildConnect("nand_3", {"parent", "Out"});
+    }
+};
+
+void test_not()
+{
     bool verbose = false;
     bool monitor_on = false;
-    bool print_probe_samples = false;
+    bool print_probe_samples = true;
 
-    // Instantiate the top-level Device (the Simulation).
     Simulation sim("test_sim", verbose);
 
-    // Add a 4-bit counter device.
-    sim.AddComponent(new One_Bit_Register(&sim, "test_reg", monitor_on, {{"clr", true}, {"load", false}, {"d_in", false}}));
+    sim.AddComponent(new NAND_NOT(&sim, "test_not", monitor_on, {{"In", false}}));
 
-    // Once we have added all our devices, call the simulation's Stabilise() method to finish setup.
     sim.Stabilise();
 
-    // Add a Clock and connect it to the clk input on the register.
-    // The Clock output will be a repeating pattern of false, true, false, true, etc, starting on false on the first tick.
     sim.AddClock("clock_0", {false, true}, monitor_on);
-    sim.ClockConnect("clock_0", "test_reg", "clk");
+    sim.ClockConnect("clock_0", "test_not", "In");
 
-    // Add Probes connected to the clk, load and clear inputs of the register and one to it's data output.
-    sim.AddProbe("reg_clk_input", "test_sim:test_reg", {"clk"}, "clock_0");
-    sim.AddProbe("reg_clr_input", "test_sim:test_reg", {"clr"}, "clock_0");
-    sim.AddProbe("reg_load_input", "test_sim:test_reg", {"load"}, "clock_0");
-    sim.AddProbe("reg_data_output", "test_sim:test_reg", {"d_out"}, "clock_0");
+    sim.AddProbe("output_0", "test_sim:test_not", {"In", "Out"}, "clock_0");
 
-    sim.Run(3, true, verbose, false);
+    sim.Run(4, false, verbose, print_probe_samples);
+}
 
-    sim.ChildSet("test_reg", "d_in", true);
-    sim.ChildSet("test_reg", "load", true);
-    sim.ChildSet("test_reg", "clr", false);
-    sim.Run(2, false, verbose, false);
+void test_and()
+{
+    bool verbose = false;
+    bool monitor_on = false;
+    bool print_probe_samples = true;
 
-    sim.ChildSet("test_reg", "d_in", false);
-    sim.ChildSet("test_reg", "load", false);
-    sim.Run(4, false, verbose, false);
+    Simulation sim("test_sim", verbose);
 
-    sim.ChildSet("test_reg", "clr", true);
-    sim.Run(2, false, verbose, false);
+    sim.AddComponent(new NAND_AND(&sim, "test_and", monitor_on, {{"In_0", false}, {"In_1", false}}));
 
-    sim.ChildSet("test_reg", "clr", false);
-    sim.ChildSet("test_reg", "d_in", true);
-    sim.Run(2, false, verbose, print_probe_samples);
+    sim.Stabilise();
+
+    sim.AddClock("clock_0", {false, true}, monitor_on);
+    sim.AddClock("clock_1", {false, false, true, true}, monitor_on);
+    sim.ClockConnect("clock_0", "test_and", "In_0");
+    sim.ClockConnect("clock_1", "test_and", "In_1");
+
+    sim.AddProbe("output_0", "test_sim:test_and", {"In_0", "In_1", "Out"}, "clock_0");
+
+    sim.Run(4, false, verbose, print_probe_samples);
+
+}
+
+void test_or()
+{
+    bool verbose = false;
+    bool monitor_on = false;
+    bool print_probe_samples = true;
+
+    Simulation sim("test_sim", verbose);
+
+    sim.AddComponent(new NAND_OR(&sim, "test_or", monitor_on, {{"In_0", false}, {"In_1", false}}));
+
+    sim.Stabilise();
+
+    sim.AddClock("clock_0", {false, true}, monitor_on);
+    sim.AddClock("clock_1", {false, false, true, true}, monitor_on);
+    sim.ClockConnect("clock_0", "test_or", "In_0");
+    sim.ClockConnect("clock_1", "test_or", "In_1");
+
+    sim.AddProbe("output_0", "test_sim:test_or", {"In_0", "In_1", "Out"}, "clock_0");
+
+    sim.Run(4, false, verbose, print_probe_samples);
+
+}
+
+void test_xor()
+{
+    bool verbose = false;
+    bool monitor_on = false;
+    bool print_probe_samples = true;
+
+    Simulation sim("test_sim", verbose);
+
+    sim.AddComponent(new NAND_XOR(&sim, "test_xor", monitor_on, {{"In_0", false}, {"In_1", false}}));
+
+    sim.Stabilise();
+
+    sim.AddClock("clock_0", {false, true}, monitor_on);
+    sim.AddClock("clock_1", {false, false, true, true}, monitor_on);
+    sim.ClockConnect("clock_0", "test_xor", "In_0");
+    sim.ClockConnect("clock_1", "test_xor", "In_1");
+
+    sim.AddProbe("output_0", "test_sim:test_xor", {"In_0", "In_1", "Out"}, "clock_0");
+
+    sim.Run(4, false, verbose, print_probe_samples);
+
+}
+
+int main ()
+{
+    test_not();
+    test_and();
+    test_or();
+    test_xor();
 
     return 0;
 }

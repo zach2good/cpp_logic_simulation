@@ -1,5 +1,20 @@
 # cpp_logic_simulation
 
+## Build
+```sh
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+</br>
+</br>
+</br>
+
+## Original Readme
+### cpp_logic_simulation
+
 © 2021 Dr Sebastien Sikora.
 
 [seb.nf.sikora@protonmail.com](mailto:seb.nf.sikora@protonmail.com)
